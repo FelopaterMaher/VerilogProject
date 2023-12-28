@@ -11,14 +11,8 @@ module full_adder(output sum, output carry, input x, input y, input z);
 endmodule
 
 
-module mux4to1 #(parameter W = 3) (
-    input [W-1:0] input0, 
-    input [W-1:0] input1,  
-    input [W-1:0] input2,
-    input [W-1:0] input3,  
-    input [1:0] sel,          
-    output reg [W-1:0] outtput  
-);
+module mux4to1 (input [2:0] input0, input [2:0] input1,  input [2:0] input2,input [2:0]input3,input [1:0] sel,          
+    output reg [2:0] outtput );
     always @(*)
         case (sel)
             2'b00: outtput = input0;
@@ -29,16 +23,75 @@ module mux4to1 #(parameter W = 3) (
         endcase
 endmodule
 
-module mux2to1 #(parameter w = 3) (
-    input [w-1:0] input0,  
-    input [w-1:0] input1, 
-    input sel,                
-    output reg [w-1:0] outtput 
-);
+module mux2to1 (input [2:0]input0 ,input [2:0]input1,input sel,output reg[2:0] outtput);
+
     always @(*)
         case (sel)
             1'b0: outtput = input0;
             1'b1: outtput = input1;
             default: outtput = input0; 
         endcase
+endmodule
+
+module programe(input [2:0]A, input [2:0]B,input[1:0]sel,output[2:0]G);
+// w1 = s0 and s1 conceted to mux2x1 -> m
+wire w1;
+and(w1,sel[0],sel[1]);
+// out wire connected to mux2x1 -> m2
+wire [2:0]out;
+// input b and ~b and the selectors is w1 output is out 
+mux2to1 m(B,{3{1'b1}}^B,w1,out);
+// connceted M2 to fulladders 
+wire [2:0]out2;
+// inputs is  a,out his output is out2 selector is s1  
+mux2to1 m2(A,out,sel[1],out2);
+wire [2:0] w3;
+// zoros for mux4x1 M 
+wire[2:0] zeros;
+assign zeros = 3'b000;
+// ones for mux4x1 M 
+wire[2:0] ones;
+assign ones = 3'b111;
+// inputs is 0,b,~a,1 selectors is sel output is w3
+mux4to1 M(zeros,B,{3{1'b1}}^A,ones,sel,w3);
+// c0 for F1 to know if we add or subtract 
+wire c0;
+or(c0,sel[1],~sel[0]);
+// module full_adder(output sum, output carry, input x, input y, input z);
+
+// Full Adders
+// x input 1
+// y input 2 
+// z carry in
+
+wire c1 , c2 , c3;
+full_adder f1(G[0],c1,out2[0],w3[0],c0);
+full_adder f2(G[1],c2,out2[1],w3[1],c1);
+full_adder f3(G[2],c3,out2[2],w3[2],c2);
+endmodule
+
+module tb();
+// 3 regesiters a , b , sel as inputs 
+// wire g for output
+  reg [2:0] A;
+  reg [2:0] B;
+  reg [1:0] sel;
+  wire [2:0] G;
+//   instance from our module programe 
+  programe uut(
+    .A(A), //this.A = A
+    .B(B),
+    .sel(sel),
+    .G(G)
+  );
+  initial begin
+    repeat (40) begin //loop for 40 time to get 40 test cases 
+      A = $random;
+      B = $random;
+      sel = $random % 4;  // constriant to generate random number from 0 to 3
+      #10; //time delay
+      $display("Test Case: A=%b, B=%b, sel=%b, G=%b", A, B, sel, G);
+    end
+    $stop;
+  end
 endmodule
